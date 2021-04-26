@@ -1,0 +1,5 @@
+version: "2"
+services:
+  scheduler:
+    volumes:
+      - /F:/cods-dockers/astro/data:/usr/local/airflow/data:ro

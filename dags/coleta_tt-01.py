@@ -28,9 +28,8 @@ auth.set_access_token(access_token, access_token_secret)
 api = tweepy.API(auth)
 
 
-path_data = '/opt/airflow/data/raw/'
-path = '/opt/airflow/data/raw'
-path_tr = '/opt/airflow/data/trusted/'
+path_data = '/usr/local/airflow/data/raw/'
+path = '/usr/local/airflow/data/raw'
 allFiles = glob2.glob(path + "/*.csv")
 
 default_args = {
@@ -70,39 +69,41 @@ def desafio_ind():
           dfs = pd.read_csv(file_,index_col=None,header=0)
           list_.append(dfs)
           tf_data = pd.concat(list_,axis=0, ignore_index=True)
-          #tf_data.to_csv(path_tr+"transform.csv", index = False, header=True)    
 
-          tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'https?:\/\/.*[\r\n]*', value='', regex=True)
-          tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'#\S+', value='', regex=True)
-          tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'@\S+', value='', regex=True)
-          tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'\$\w*', value='', regex=True)
-          tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'\n', value='', regex=True)
-          tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'\""', value='', regex=True)
-          tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'  ', value=' ', regex=True)
-          tf_data['Tweets'] = tf_data['Tweets'].str.replace('[^\w\s#@/:%.,_-]', '', flags=re.UNICODE)
-          tf_data['Tweets'] = tf_data['Tweets'].str.upper().str.lstrip().str.strip()
+          return tf_data()
 
-                          
-          tf_data['Post_date'] = pd.to_datetime(tf_data['Post_date'], format='%d-%m-Y',infer_datetime_format=True) 
-          tf_data['Post_date'] = tf_data['Post_date'].dt.strftime('%Y-%m-%d')
+  @task()
+  def transform_data(tf_data):
+    tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'https?:\/\/.*[\r\n]*', value='', regex=True)
+    tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'#\S+', value='', regex=True)
+    tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'@\S+', value='', regex=True)
+    tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'\$\w*', value='', regex=True)
+    tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'\n', value='', regex=True)
+    tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'\""', value='', regex=True)
+    tf_data['Tweets'] = tf_data['Tweets'].replace(to_replace=r'  ', value=' ', regex=True)
+    tf_data['Tweets'] = tf_data['Tweets'].str.replace('[^\w\s#@/:%.,_-]', '', flags=re.UNICODE)
+    tf_data['Tweets'] = tf_data['Tweets'].str.upper().str.lstrip().str.strip()
 
-          tf_data.insert(3, "Upload_date",datetime.today().strftime('%Y-%m-%d'), allow_duplicates=False)    
-         
-          tf_data.to_csv(path_tr+"transform.csv", index = False, header=True)
+                    
+    tf_data['Post_date'] = pd.to_datetime(tf_data['Post_date'], format='%d-%m-Y',infer_datetime_format=True) 
+    tf_data['Post_date'] = tf_data['Post_date'].dt.strftime('%Y-%m-%d')
+
+    tf_data.insert(3, "Upload_date",datetime.today().strftime('%Y-%m-%d'), allow_duplicates=False)    
+
+    return tf_data
 
 
   @task()
-  def upload_data(multiple_outputs=True):
-    tf_data = pd.read_csv(path_tr + "transform.csv", sep=",")
-    tf_data.reset_index(inplace=True)
+  def upload_data(tf_data):
+    ttf_data.reset_index(inplace=True)
     data_dict = tf_data.to_dict("records")
     db.tweets_famosos.insert_many(data_dict) 
 
   
   data = get_data()
   task_read_dt = read_data(data)
-  #task_tf_data = transform_data(task_read_dt)
-  task_up_dt = upload_data(task_read_dt)
+  task_tf_data = transform_data(task_read_dt)
+  task_up_dt = upload_data(task_tf_data)
 
 
 coleta_tw = desafio_ind()  
